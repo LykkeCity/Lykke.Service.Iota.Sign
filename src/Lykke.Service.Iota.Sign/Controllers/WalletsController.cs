@@ -2,6 +2,7 @@
 using Lykke.Service.Iota.Sign.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using System.Threading.Tasks;
 
 namespace Lykke.Service.Iota.Sign.Controllers
 {
@@ -16,15 +17,19 @@ namespace Lykke.Service.Iota.Sign.Controllers
         }
 
         [HttpPost]
-        public WalletResponse Post()
+        public async Task<WalletResponse> Post()
         {
-            var privateKey = _iotaService.GetPrivateKey();
-            var publicAddress = _iotaService.GetPublicAddress(privateKey);
+            var index = 0;
+            var seed = _iotaService.GetSeed();
+            var virtualAddress = _iotaService.GetVirtualAddress(seed);
+            var realAddress = _iotaService.GetRealAddress(seed, index);
+
+            await _iotaService.SaveAddress(virtualAddress, realAddress, index);
 
             return new WalletResponse()
             {
-                PrivateKey = privateKey,
-                PublicAddress = publicAddress
+                PrivateKey = seed,
+                PublicAddress = virtualAddress
             };
         }
     }

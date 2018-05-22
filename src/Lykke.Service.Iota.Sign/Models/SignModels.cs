@@ -33,7 +33,7 @@ namespace Lykke.Service.Iota.Sign.Models
             var num = 0;
             foreach (var key in PrivateKeys)
             {
-                if (!service.IsValidPrivateKey(key))
+                if (!service.IsValidSeed(key))
                 {
                     result.Add(new ValidationResult(
                         $"{nameof(PrivateKeys)}.[{num}] is not a valid", 
