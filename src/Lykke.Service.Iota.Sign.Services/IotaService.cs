@@ -186,16 +186,14 @@ namespace Lykke.Service.Iota.Sign.Services
             var addressGenerator = new AddressGenerator();
             var seedObj = new Seed(seed);
 
-            return addressGenerator.GetAddress(seedObj, SecurityLevel.High, index);
+            return addressGenerator.GetAddress(seedObj, SecurityLevel.Low, index);
         }
 
         private string CalculateHash(string input)
         {
-            //var salt = GenerateSalt(8);
             var salt = new byte[0];
             var bytes = KeyDerivation.Pbkdf2(input, salt, KeyDerivationPrf.HMACSHA512, 10000, 24);
 
-            //return $"{string.Concat(salt.Select(f => f.ToString("X2")))}{string.Concat(bytes.Select(f => f.ToString("X2")))}";
             return string.Concat(bytes.Select(f => f.ToString("X2")));
         }
 
