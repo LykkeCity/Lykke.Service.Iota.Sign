@@ -22,6 +22,15 @@ namespace Lykke.Service.Iota.Sign.Services
 
         public bool IsValidSeed(string seed)
         {
+            try
+            {
+                var seedObj = new Seed(seed);
+            }
+            catch
+            {
+                return false;
+            }
+
             return true;
         }
 
