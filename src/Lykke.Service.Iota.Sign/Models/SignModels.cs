@@ -23,6 +23,13 @@ namespace Lykke.Service.Iota.Sign.Models
             var result = new List<ValidationResult>();
             var service = (IIotaService)validationContext.GetService(typeof(IIotaService));
 
+            if (string.IsNullOrEmpty(TransactionContext))
+            {
+                result.Add(new ValidationResult(
+                    $"{nameof(TransactionContext)} can not be null or empty",
+                    new[] { nameof(TransactionContext) }));
+            }
+
             if (PrivateKeys == null || !PrivateKeys.Any())
             {
                 result.Add(new ValidationResult(

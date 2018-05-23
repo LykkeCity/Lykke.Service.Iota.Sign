@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using Lykke.Service.Dash.Sign.Core.Domain;
+using System.Threading.Tasks;
 
 namespace Lykke.Service.Iota.Sign.Core.Services
 {
@@ -9,6 +10,6 @@ namespace Lykke.Service.Iota.Sign.Core.Services
         string GetVirtualAddress(string seed);
         string GetRealAddress(string seed, int index);
         Task SaveAddress(string virtualAddress, string realAddress, int index);
-        string SignTransaction();
+        Task<string> SignTransaction(string[] seeds, TransactionContext transactionContext);
     }
 }

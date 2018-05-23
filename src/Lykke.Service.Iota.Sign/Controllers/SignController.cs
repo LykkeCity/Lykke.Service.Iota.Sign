@@ -3,6 +3,10 @@ using Lykke.Service.Iota.Sign.Models;
 using Lykke.Service.Iota.Sign.Utils;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Lykke.Service.Dash.Sign.Core.Domain;
+using Lykke.Common.Api.Contract.Responses;
 
 namespace Lykke.Service.Iota.Sign.Controllers
 {
@@ -18,14 +22,28 @@ namespace Lykke.Service.Iota.Sign.Controllers
 
         [HttpPost]
         [ProducesResponseType(typeof(SignResponse), (int)HttpStatusCode.OK)]
-        public IActionResult SignTransaction([FromBody]SignTransactionRequest request)
+        public async Task<IActionResult> SignTransaction([FromBody]SignTransactionRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState.ToErrorResponse());
             }
 
-            var hex = _iotaService.SignTransaction();
+            var transactionContext = JsonConvert.DeserializeObject<TransactionContext>(request.TransactionContext);
+            if (transactionContext == null)
+            {
+                return BadRequest(ErrorResponse.Create($"{nameof(transactionContext)} can not be null"));
+            }
+            if (transactionContext.Inputs == null || transactionContext.Inputs.Length == 0)
+            {
+                return BadRequest(ErrorResponse.Create($"{nameof(transactionContext)}{nameof(transactionContext.Inputs)} must have at least one record"));
+            }
+            if (transactionContext.Outputs == null || transactionContext.Outputs.Length == 0)
+            {
+                return BadRequest(ErrorResponse.Create($"{nameof(transactionContext)}{nameof(transactionContext.Outputs)} must have at least one record"));
+            }
+
+            var hex = await _iotaService.SignTransaction(request.PrivateKeys, transactionContext);
 
             return Ok(new SignResponse()
             {
