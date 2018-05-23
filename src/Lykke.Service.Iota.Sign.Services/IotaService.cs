@@ -13,11 +13,12 @@ namespace Lykke.Service.Iota.Sign.Services
     public class IotaService : IIotaService
     {
         private readonly ILog _log;
-        private readonly string _api = "http://iota-api.lykke-service.svc.cluster.local";
+        private readonly string _apiUrl;
 
-        public IotaService(ILog log)
+        public IotaService(ILog log, string apiUrl)
         {
             _log = log;
+            _apiUrl = apiUrl;
         }
 
         public bool IsValidSeed(string seed)
@@ -70,7 +71,7 @@ namespace Lykke.Service.Iota.Sign.Services
                 index
             };
 
-            await FlurlHelper.PostJsonAsync($"{_api}/api/internal/virtual-address/{virtualAddress}", data);
+            await FlurlHelper.PostJsonAsync($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}", data);
         }
 
         private string CalculateHash(string input)

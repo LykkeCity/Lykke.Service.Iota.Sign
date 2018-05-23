@@ -36,6 +36,7 @@ namespace Lykke.Service.Iota.Sign.Modules
 
             builder.RegisterType<IotaService>()
                 .As<IIotaService>()
+                .WithParameter("apiUrl", _settings.CurrentValue.ApiUrl)
                 .SingleInstance();
         }
     }
