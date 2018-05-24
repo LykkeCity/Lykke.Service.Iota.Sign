@@ -141,7 +141,7 @@ namespace Lykke.Service.Iota.Sign.Services
             {
                 if (transactionContext.Inputs.Length > 1)
                 {
-                    throw new ArgumentException($"We must have only one input when there is positive reminder amount: {reminderAmount}");
+                    throw new ArgumentException($"Only one input is allowed with positive reminder amount: {reminderAmount}");
                 }
 
                 var input = inputs[0];
