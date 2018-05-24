@@ -71,6 +71,12 @@ namespace Lykke.Service.Iota.Sign.Services
             var inputs = await GetTxInputs(seedDictionary, transactionContext);
             bundle.AddInput(inputs.Select(f => f.Address));
 
+            var reminder = GetReminder(inputs, transactionContext);
+            if (reminder != null)
+            {
+                bundle.AddRemainder(reminder);
+            }
+
             foreach (var output in transactionContext.Outputs)
             {
                 bundle.AddTransfer((new Transfer
@@ -80,12 +86,6 @@ namespace Lykke.Service.Iota.Sign.Services
                     Tag = Tag.Empty,
                     Timestamp = Timestamp.UnixSecondsTimestamp,
                 }));
-            }
-
-            var reminder = GetReminder(inputs, transactionContext);
-            if (reminder != null)
-            {
-                bundle.AddRemainder(reminder);
             }
 
             bundle.Finalize();
@@ -118,7 +118,7 @@ namespace Lykke.Service.Iota.Sign.Services
                 var inputIndex = await GetVirtualAddressLatestIndex(input.VirtualAddress);
                 var inputAddress = GetAddress(inputSeed, inputIndex);
 
-                inputAddress.Balance = input.Value;
+                inputAddress.Balance = await GetVirtualAddressLatestIndex(input.VirtualAddress);
 
                 inputs.Add(new InputInfo
                 {
@@ -133,9 +133,18 @@ namespace Lykke.Service.Iota.Sign.Services
 
         private Address GetReminder(List<InputInfo> inputs, TransactionContext transactionContext)
         {
-            var inputAmount = transactionContext.Inputs.Sum(f => f.Value);
+            var inputAmount = inputs.Sum(f => f.Address.Balance);
             var outputAmount = transactionContext.Outputs.Sum(f => f.Value);
             var reminderAmount = inputAmount - outputAmount;
+
+            if (inputAmount < outputAmount)
+            {
+                throw new ArgumentException($"Input amount ({inputAmount}) is less than Output amount ({outputAmount})");
+            }
+            if (transactionContext.Type == TransactionType.Cashin && inputAmount != outputAmount)
+            {
+                throw new ArgumentException($"Input amount ({inputAmount}) must equal Output amount ({outputAmount}) for cash-in operation");
+            }
 
             if (reminderAmount > 0)
             {
@@ -179,6 +188,11 @@ namespace Lykke.Service.Iota.Sign.Services
         private async Task<int> GetVirtualAddressLatestIndex(string virtualAddress)
         {
             return await FlurlHelper.GetJsonAsync<int>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/index");
+        }
+
+        private async Task<long> GetVirtualAddressBalance(string virtualAddress)
+        {
+            return await FlurlHelper.GetJsonAsync<long>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/balance");
         }
 
         private Address GetAddress(string seed, int index)

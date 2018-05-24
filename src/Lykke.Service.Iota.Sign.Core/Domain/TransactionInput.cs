@@ -3,6 +3,5 @@
     public class TransactionInput
     {
         public string VirtualAddress { get; set; }
-        public long Value { get; set; }
     }
 }
