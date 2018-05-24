@@ -186,7 +186,7 @@ namespace Lykke.Service.Iota.Sign.Services
             var addressGenerator = new AddressGenerator();
             var seedObj = new Seed(seed);
 
-            return addressGenerator.GetAddress(seedObj, SecurityLevel.Low, index);
+            return addressGenerator.GetAddress(seedObj, SecurityLevel.High, index);
         }
 
         private string CalculateHash(string input)
