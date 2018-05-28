@@ -2,7 +2,7 @@
 {
     public class TransactionOutput
     {
-        public string RealAddress { get; set; }
+        public string Address { get; set; }
         public long Value { get; set; }
     }
 }

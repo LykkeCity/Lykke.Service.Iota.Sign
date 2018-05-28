@@ -79,9 +79,15 @@ namespace Lykke.Service.Iota.Sign.Services
 
             foreach (var output in transactionContext.Outputs)
             {
+                var outputAddress = output.Address;
+                if (outputAddress.StartsWith(Consts.VirtualAddressPrefix))
+                {
+                    outputAddress = await GetVirtualAddressReal(output.Address);
+                }
+
                 bundle.AddTransfer((new Transfer
                 {
-                    Address = new Address(output.RealAddress),
+                    Address = new Address(outputAddress),
                     ValueToTransfer = output.Value,
                     Tag = Tag.Empty,
                     Timestamp = Timestamp.UnixSecondsTimestamp,
@@ -93,8 +99,8 @@ namespace Lykke.Service.Iota.Sign.Services
 
             var result = new
             {
-                bundle.Hash.Value,
-                transactions = bundle.Transactions.Select(f => f.ToTrytes().Value)
+                Hash = bundle.Hash.Value,
+                Transactions = bundle.Transactions.Select(f => f.ToTrytes().Value)
             }.ToJson();
 
             await CreateNewRealAddresses(inputs, transactionContext);
@@ -118,7 +124,7 @@ namespace Lykke.Service.Iota.Sign.Services
                 var inputIndex = await GetVirtualAddressLatestIndex(input.VirtualAddress);
                 var inputAddress = GetAddress(inputSeed, inputIndex);
 
-                inputAddress.Balance = await GetVirtualAddressLatestIndex(input.VirtualAddress);
+                inputAddress.Balance = await GetVirtualAddressBalance(input.VirtualAddress);
 
                 inputs.Add(new InputInfo
                 {
@@ -193,6 +199,11 @@ namespace Lykke.Service.Iota.Sign.Services
         private async Task<long> GetVirtualAddressBalance(string virtualAddress)
         {
             return await FlurlHelper.GetJsonAsync<long>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/balance");
+        }
+
+        private async Task<string> GetVirtualAddressReal(string virtualAddress)
+        {
+            return await FlurlHelper.GetJsonAsync<string>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/real");
         }
 
         private Address GetAddress(string seed, int index)
