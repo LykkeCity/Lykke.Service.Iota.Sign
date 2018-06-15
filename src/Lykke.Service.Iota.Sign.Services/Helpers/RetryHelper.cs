@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Lykke.Service.Dash.Sign.Services.Helpers
+namespace Lykke.Service.Iota.Sign.Services.Helpers
 {
     public class Retry
     {

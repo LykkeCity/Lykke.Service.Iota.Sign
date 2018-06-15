@@ -1,13 +1,12 @@
 ﻿using Common;
 using Common.Log;
-using Lykke.Service.Dash.Sign.Core.Domain;
-using Lykke.Service.Dash.Sign.Services.Helpers;
+using Lykke.Service.Iota.Sign.Core.Domain;
+using Lykke.Service.Iota.Sign.Services.Helpers;
 using Lykke.Service.Iota.Sign.Core.Services;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Tangle.Net.Cryptography;
 using Tangle.Net.Entity;
@@ -58,41 +57,17 @@ namespace Lykke.Service.Iota.Sign.Services
         {
             var address = GetAddress(seed, index);
 
-            return address.Value;
+            return address.ToAddressWithChecksum();
         }
 
         public async Task<string> SignTransaction(string[] seeds, TransactionContext transactionContext)
         {
             var bundle = new Bundle();
-            var seedDictionary = new Dictionary<string, string>(
-                seeds.Select(f => KeyValuePair.Create(GetVirtualAddress(f), f))
-            );
+            var inputs = await GetTxInputs(seeds, transactionContext);
 
-            var inputs = await GetTxInputs(seedDictionary, transactionContext);
-            bundle.AddInput(inputs.Select(f => f.Address));
-
-            var reminder = GetReminder(inputs, transactionContext);
-            if (reminder != null)
-            {
-                bundle.AddRemainder(reminder);
-            }
-
-            foreach (var output in transactionContext.Outputs)
-            {
-                var outputAddress = output.Address;
-                if (outputAddress.StartsWith(Consts.VirtualAddressPrefix))
-                {
-                    outputAddress = await GetVirtualAddressReal(output.Address);
-                }
-
-                bundle.AddTransfer((new Transfer
-                {
-                    Address = new Address(outputAddress),
-                    ValueToTransfer = output.Value,
-                    Tag = Tag.Empty,
-                    Timestamp = Timestamp.UnixSecondsTimestamp,
-                }));
-            }
+            AddOutputs(bundle, transactionContext.Outputs);
+            AddInputs(bundle, inputs);
+            AddReminder(bundle, inputs, transactionContext.Type);
 
             bundle.Finalize();
             bundle.Sign();
@@ -108,75 +83,115 @@ namespace Lykke.Service.Iota.Sign.Services
             return result;
         }
 
-        private async Task<List<InputInfo>> GetTxInputs(Dictionary<string, string> seeds, 
-            TransactionContext transactionContext)
+        private void AddOutputs(Bundle bundle, TransactionOutput[] outputs)
         {
-            var inputs = new List<InputInfo>();
+            foreach (var output in outputs)
+            {
+                bundle.AddTransfer((new Transfer
+                {
+                    Address = GetOutputAddress(output.Address),
+                    ValueToTransfer = output.Value,
+                    Tag = Tag.Empty,
+                    Timestamp = Timestamp.UnixSecondsTimestamp,
+                }));
+            }
+        }
+
+        private void AddInputs(Bundle bundle, List<VirtualAddressInfo> inputs)
+        {
+            foreach (var input in inputs)
+            {
+                var inputsWithBalance = input.VirtualAddressInputs.Where(f => f.Balance > 0);
+                if (!inputsWithBalance.Any())
+                {
+                    throw new ArgumentException($"There are no inputs with positive balance for {input.Address} address");
+                }
+
+                foreach (var inputWithBalance in inputsWithBalance)
+                {
+                    var inputAddress = GetAddress(input.Seed, inputWithBalance.Index);
+
+                    inputAddress.Balance = inputWithBalance.Balance;
+
+                    bundle.AddInput(new Address[] { inputAddress });
+                }                
+            }
+        }
+
+        private void AddReminder(Bundle bundle, List<VirtualAddressInfo> inputs, TransactionType transactionType)
+        {
+            if (bundle.Balance == 0)
+            {
+                return;
+            }
+
+            if (bundle.Balance < 0)
+            {
+                throw new ArgumentException($"Input amount is less than Output amount on {bundle.Balance}");
+            }
+            if (transactionType == TransactionType.Cashin && bundle.Balance > 0)
+            {
+                throw new ArgumentException($"Input amount must equal Output amount for cash-in operation");
+            }
+            if (transactionType == TransactionType.Cashout && inputs.Count > 1)
+            {
+                throw new ArgumentException($"Only one input is allowed with positive reminder amount {bundle.Balance}");
+            }
+
+            var input = inputs[0];
+
+            var reminder = input.FirstNotLockedInput == null ?
+                GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1) :
+                new Address(input.FirstNotLockedInput.Address);
+
+            reminder.Balance = bundle.Balance;
+
+            bundle.AddRemainder(reminder);
+        }
+
+        private async Task<List<VirtualAddressInfo>> GetTxInputs(string[] seeds, TransactionContext transactionContext)
+        {
+            var inputs = new List<VirtualAddressInfo>();
+            var seedDictionary = new Dictionary<string, string>(
+                seeds.Select(f => KeyValuePair.Create(GetVirtualAddress(f), f))
+            );
 
             foreach (var input in transactionContext.Inputs)
             {
-                if (!seeds.ContainsKey(input.VirtualAddress))
+                if (!seedDictionary.ContainsKey(input.VirtualAddress))
                 {
                     throw new ArgumentException($"The private key for {input.VirtualAddress} address was not provided");
                 }
 
-                var inputSeed = seeds[input.VirtualAddress];
-                var inputIndex = await GetVirtualAddressLatestIndex(input.VirtualAddress);
-                var inputAddress = GetAddress(inputSeed, inputIndex);
-
-                inputAddress.Balance = await GetVirtualAddressBalance(input.VirtualAddress);
-
-                inputs.Add(new InputInfo
+                var virtualAddressInputs = await GetVirtualAddressInputs(input.VirtualAddress);
+                if (virtualAddressInputs == null || !virtualAddressInputs.Any())
                 {
-                    Seed = inputSeed,
-                    VirtualAddress = input.VirtualAddress,
-                    Address = inputAddress
-                });
+                    throw new ArgumentException($"There are no inputs for {input.VirtualAddress} address");
+                }
+
+                var inputInfo = new VirtualAddressInfo
+                {
+                    Seed = seedDictionary[input.VirtualAddress],
+                    Address = input.VirtualAddress,
+                    VirtualAddressInputs = virtualAddressInputs.ToList()
+                };
+
+                inputs.Add(inputInfo);
             }
 
             return inputs;
         }
 
-        private Address GetReminder(List<InputInfo> inputs, TransactionContext transactionContext)
-        {
-            var inputAmount = inputs.Sum(f => f.Address.Balance);
-            var outputAmount = transactionContext.Outputs.Sum(f => f.Value);
-            var reminderAmount = inputAmount - outputAmount;
-
-            if (inputAmount < outputAmount)
-            {
-                throw new ArgumentException($"Input amount ({inputAmount}) is less than Output amount ({outputAmount})");
-            }
-            if (transactionContext.Type == TransactionType.Cashin && inputAmount != outputAmount)
-            {
-                throw new ArgumentException($"Input amount ({inputAmount}) must equal Output amount ({outputAmount}) for cash-in operation");
-            }
-
-            if (reminderAmount > 0)
-            {
-                if (transactionContext.Inputs.Length > 1)
-                {
-                    throw new ArgumentException($"Only one input is allowed with positive reminder amount: {reminderAmount}");
-                }
-
-                var input = inputs[0];
-                var reminder = GetAddress(input.Seed, input.Address.KeyIndex + 1);
-
-                reminder.Balance = reminderAmount;
-
-                return reminder;
-            }
-
-            return null;
-        }
-
-        private async Task CreateNewRealAddresses(List<InputInfo> inputs, TransactionContext transactionContext)
+        private async Task CreateNewRealAddresses(List<VirtualAddressInfo> inputs, TransactionContext transactionContext)
         {
             foreach (var input in inputs)
             {
-                var inputAddress = GetAddress(input.Seed, input.Address.KeyIndex + 1);
+                if (input.FirstNotLockedInput == null)
+                {
+                    var inputAddress = GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1);
 
-                await SaveAddress(input.VirtualAddress, inputAddress.Value, inputAddress.KeyIndex);
+                    await SaveAddress(input.Address, inputAddress.ToAddressWithChecksum(), inputAddress.KeyIndex);
+                }                
             }
         }
 
@@ -191,19 +206,19 @@ namespace Lykke.Service.Iota.Sign.Services
             await FlurlHelper.PostJsonAsync($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}", data);
         }
 
-        private async Task<int> GetVirtualAddressLatestIndex(string virtualAddress)
+        private async Task<AddressInput[]> GetVirtualAddressInputs(string virtualAddress)
         {
-            return await FlurlHelper.GetJsonAsync<int>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/index");
+            return await FlurlHelper.GetJsonAsync<AddressInput[]>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/inputs");
         }
 
-        private async Task<long> GetVirtualAddressBalance(string virtualAddress)
+        private Address GetOutputAddress(string address)
         {
-            return await FlurlHelper.GetJsonAsync<long>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/balance");
-        }
+            if (address.StartsWith(Consts.VirtualAddressPrefix))
+            {
+                address = FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real").Result;
+            }
 
-        private async Task<string> GetVirtualAddressReal(string virtualAddress)
-        {
-            return await FlurlHelper.GetJsonAsync<string>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/real");
+            return new Address(address);
         }
 
         private Address GetAddress(string seed, int index)
@@ -211,7 +226,7 @@ namespace Lykke.Service.Iota.Sign.Services
             var addressGenerator = new AddressGenerator();
             var seedObj = new Seed(seed);
 
-            return addressGenerator.GetAddress(seedObj, SecurityLevel.High, index);
+            return addressGenerator.GetAddress(seedObj, SecurityLevel.Medium, index);
         }
 
         private string CalculateHash(string input)
@@ -222,23 +237,23 @@ namespace Lykke.Service.Iota.Sign.Services
             return string.Concat(bytes.Select(f => f.ToString("X2")));
         }
 
-        private static byte[] GenerateSalt(int length)
-        {
-            var salt = new byte[length];
-
-            using (var random = RandomNumberGenerator.Create())
-            {
-                random.GetBytes(salt);
-            }
-
-            return salt;
-        }
-
-        private class InputInfo
+        private class VirtualAddressInfo
         {
             public string Seed { get; set; }
-            public string VirtualAddress { get; set; }
-            public Address Address { get; set; }
+
+            public string Address { get; set; }
+
+            public List<AddressInput> VirtualAddressInputs { get; set; }
+
+            public AddressInput FirstNotLockedInput
+            {
+                get
+                {
+                    var inputsWithoutBalance = VirtualAddressInputs.Where(f => f.Balance == 0);
+
+                    return inputsWithoutBalance.Any() ? inputsWithoutBalance.OrderBy(f => f.Index).First() : null;
+                }
+            }
         }
     }
 }

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Lykke.Service.Dash.Sign.Core.Domain;
+using Lykke.Service.Iota.Sign.Core.Domain;
 using Lykke.Common.Api.Contract.Responses;
 
 namespace Lykke.Service.Iota.Sign.Controllers

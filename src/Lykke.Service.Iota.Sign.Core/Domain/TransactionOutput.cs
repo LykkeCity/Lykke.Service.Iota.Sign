@@ -1,4 +1,4 @@
-﻿namespace Lykke.Service.Dash.Sign.Core.Domain
+﻿namespace Lykke.Service.Iota.Sign.Core.Domain
 {
     public class TransactionOutput
     {

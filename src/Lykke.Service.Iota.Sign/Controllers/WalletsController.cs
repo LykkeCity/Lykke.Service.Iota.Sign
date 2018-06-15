@@ -1,7 +1,6 @@
 ﻿using Lykke.Service.Iota.Sign.Core.Services;
 using Lykke.Service.Iota.Sign.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Net;
 using System.Threading.Tasks;
 
 namespace Lykke.Service.Iota.Sign.Controllers
@@ -31,6 +30,15 @@ namespace Lykke.Service.Iota.Sign.Controllers
                 PrivateKey = seed,
                 PublicAddress = virtualAddress
             };
+        }
+
+        [HttpPost("test")]
+        public IActionResult Test(int index, string seed)
+        {
+            var virtualAddress = _iotaService.GetVirtualAddress(seed);
+            var realAddress = _iotaService.GetRealAddress(seed, index);
+
+            return Ok(new { seed, virtualAddress, realAddress });
         }
     }
 }
