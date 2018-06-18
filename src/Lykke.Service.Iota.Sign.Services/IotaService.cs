@@ -67,7 +67,8 @@ namespace Lykke.Service.Iota.Sign.Services
 
             AddOutputs(bundle, transactionContext.Outputs);
             AddInputs(bundle, inputs);
-            await AddReminder(bundle, inputs, transactionContext.Type);
+
+            var reminderAddress = await AddReminder(bundle, inputs, transactionContext.Type);
 
             bundle.Finalize();
             bundle.Sign();
@@ -78,7 +79,7 @@ namespace Lykke.Service.Iota.Sign.Services
                 Transactions = bundle.Transactions.Select(f => f.ToTrytes().Value)
             }.ToJson();
 
-            await CreateNewRealAddresses(inputs, transactionContext);
+            await CreateNewRealAddresses(inputs, transactionContext, reminderAddress);
 
             return result;
         }
@@ -118,11 +119,11 @@ namespace Lykke.Service.Iota.Sign.Services
             }
         }
 
-        private async Task AddReminder(Bundle bundle, List<VirtualAddressInfo> inputs, TransactionType transactionType)
+        private async Task<Address> AddReminder(Bundle bundle, List<VirtualAddressInfo> inputs, TransactionType transactionType)
         {
             if (bundle.Balance == 0)
             {
-                return;
+                return null;
             }
 
             if (bundle.Balance < 0)
@@ -148,6 +149,8 @@ namespace Lykke.Service.Iota.Sign.Services
             reminder.Balance = bundle.Balance;
 
             bundle.AddRemainder(reminder);
+
+            return reminder;
         }
 
         private async Task<List<VirtualAddressInfo>> GetTxInputs(string[] seeds, TransactionContext transactionContext)
@@ -183,17 +186,26 @@ namespace Lykke.Service.Iota.Sign.Services
             return inputs;
         }
 
-        private async Task CreateNewRealAddresses(List<VirtualAddressInfo> inputs, TransactionContext transactionContext)
+        private async Task CreateNewRealAddresses(List<VirtualAddressInfo> inputs,
+            TransactionContext transactionContext,
+            Address reminderAddress)
         {
-            foreach (var input in inputs)
+            if (reminderAddress == null)
             {
-                var virtualAddressInput = await GetFirstNotLockedInput(input.VirtualAddressInputs);
-                if (virtualAddressInput == null)
+                foreach (var input in inputs)
                 {
-                    var inputAddress = GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1);
+                    var virtualAddressInput = await GetFirstNotLockedInput(input.VirtualAddressInputs);
+                    if (virtualAddressInput == null)
+                    {
+                        var inputAddress = GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1);
 
-                    await SaveAddress(input.Address, inputAddress.ToAddressWithChecksum(), inputAddress.KeyIndex);
+                        await SaveAddress(input.Address, inputAddress.ToAddressWithChecksum(), inputAddress.KeyIndex);
+                    }
                 }
+            }
+            else
+            {
+                await SaveAddress(inputs[0].Address, reminderAddress.ToAddressWithChecksum(), reminderAddress.KeyIndex);
             }
         }
 
