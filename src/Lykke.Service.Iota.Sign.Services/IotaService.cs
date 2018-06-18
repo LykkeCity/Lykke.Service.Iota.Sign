@@ -218,6 +218,12 @@ namespace Lykke.Service.Iota.Sign.Services
                 address = FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real").Result;
             }
 
+            var canRecieve = FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-spent").Result;
+            if (!canRecieve)
+            {
+                throw new ArgumentException($"The {address} address can not recieve iota. Private key reuse detected.");
+            }
+
             return new Address(address);
         }
 
