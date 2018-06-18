@@ -67,7 +67,7 @@ namespace Lykke.Service.Iota.Sign.Services
 
             AddOutputs(bundle, transactionContext.Outputs);
             AddInputs(bundle, inputs);
-            AddReminder(bundle, inputs, transactionContext.Type);
+            await AddReminder(bundle, inputs, transactionContext.Type);
 
             bundle.Finalize();
             bundle.Sign();
@@ -118,7 +118,7 @@ namespace Lykke.Service.Iota.Sign.Services
             }
         }
 
-        private void AddReminder(Bundle bundle, List<VirtualAddressInfo> inputs, TransactionType transactionType)
+        private async Task AddReminder(Bundle bundle, List<VirtualAddressInfo> inputs, TransactionType transactionType)
         {
             if (bundle.Balance == 0)
             {
@@ -140,9 +140,10 @@ namespace Lykke.Service.Iota.Sign.Services
 
             var input = inputs[0];
 
-            var reminder = input.FirstNotLockedInput == null ?
+            var inputAddress = await GetFirstNotLockedInput(input.VirtualAddressInputs);
+            var reminder = inputAddress == null ?
                 GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1) :
-                new Address(input.FirstNotLockedInput.Address);
+                new Address(inputAddress.Address);
 
             reminder.Balance = bundle.Balance;
 
@@ -186,12 +187,13 @@ namespace Lykke.Service.Iota.Sign.Services
         {
             foreach (var input in inputs)
             {
-                if (input.FirstNotLockedInput == null)
+                var virtualAddressInput = await GetFirstNotLockedInput(input.VirtualAddressInputs);
+                if (virtualAddressInput == null)
                 {
                     var inputAddress = GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1);
 
                     await SaveAddress(input.Address, inputAddress.ToAddressWithChecksum(), inputAddress.KeyIndex);
-                }                
+                }
             }
         }
 
@@ -218,7 +220,7 @@ namespace Lykke.Service.Iota.Sign.Services
                 address = FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real").Result;
             }
 
-            var canRecieve = FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-spent").Result;
+            var canRecieve = FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-recieve").Result;
             if (!canRecieve)
             {
                 throw new ArgumentException($"The {address} address can not recieve iota. Private key reuse detected.");
@@ -235,6 +237,20 @@ namespace Lykke.Service.Iota.Sign.Services
             return addressGenerator.GetAddress(seedObj, SecurityLevel.Medium, index);
         }
 
+        private async Task<AddressInput> GetFirstNotLockedInput(List<AddressInput> inputs)
+        {
+            foreach (var input in inputs)
+            {
+                var canRecieve = await FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{input.Address}/can-recieve");
+                if (canRecieve)
+                {
+                    return input;
+                }
+            }
+
+            return null;
+        }
+
         private string CalculateHash(string input)
         {
             var salt = new byte[0];
@@ -249,17 +265,7 @@ namespace Lykke.Service.Iota.Sign.Services
 
             public string Address { get; set; }
 
-            public List<AddressInput> VirtualAddressInputs { get; set; }
-
-            public AddressInput FirstNotLockedInput
-            {
-                get
-                {
-                    var inputsWithoutBalance = VirtualAddressInputs.Where(f => f.Balance == 0);
-
-                    return inputsWithoutBalance.Any() ? inputsWithoutBalance.OrderBy(f => f.Index).First() : null;
-                }
-            }
+            public List<AddressInput> VirtualAddressInputs { get; set; }            
         }
     }
 }
