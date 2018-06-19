@@ -235,7 +235,7 @@ namespace Lykke.Service.Iota.Sign.Services
             var canRecieve = FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-recieve").Result;
             if (!canRecieve)
             {
-                throw new ArgumentException($"The {address} address can not recieve iota. Private key reuse detected.");
+                throw new ArgumentException($"The output {address} address can not recieve iota. Private key reuse detected.");
             }
 
             return new Address(address);
@@ -253,9 +253,14 @@ namespace Lykke.Service.Iota.Sign.Services
         {
             foreach (var input in inputs)
             {
-                var canRecieve = await FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{input.Address}/can-recieve");
-                if (canRecieve)
+                if (input.Balance == 0)
                 {
+                    var canRecieve = await FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{input.Address}/can-recieve");
+                    if (!canRecieve)
+                    {
+                        throw new ArgumentException($"The input {input.Address} address can not recieve iota. Private key reuse detected.");
+                    }
+
                     return input;
                 }
             }
