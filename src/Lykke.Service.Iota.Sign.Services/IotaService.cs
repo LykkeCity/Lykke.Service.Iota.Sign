@@ -63,12 +63,12 @@ namespace Lykke.Service.Iota.Sign.Services
         public async Task<string> SignTransaction(string[] seeds, TransactionContext transactionContext)
         {
             var bundle = new Bundle();
-            var inputs = await GetTxInputs(seeds, transactionContext);
+            var virtualInputs = await GetVirtualInputs(seeds, transactionContext.Inputs);
 
-            AddOutputs(bundle, transactionContext.Outputs);
-            AddInputs(bundle, inputs);
+            await AddOutputs(bundle, transactionContext.Outputs);
+            await AddInputs(bundle, virtualInputs);
 
-            var reminderAddress = await AddReminder(bundle, inputs, transactionContext.Type);
+            AddReminder(bundle, virtualInputs, transactionContext.Type);
 
             bundle.Finalize();
             bundle.Sign();
@@ -79,18 +79,18 @@ namespace Lykke.Service.Iota.Sign.Services
                 Transactions = bundle.Transactions.Select(f => f.ToTrytes().Value)
             }.ToJson();
 
-            await CreateNewRealAddresses(inputs, transactionContext, reminderAddress);
-
             return result;
         }
 
-        private void AddOutputs(Bundle bundle, TransactionOutput[] outputs)
+        private async Task AddOutputs(Bundle bundle, TransactionOutput[] outputs)
         {
             foreach (var output in outputs)
             {
+                var address = await GetOutputAddress(output.Address);
+
                 bundle.AddTransfer((new Transfer
                 {
-                    Address = GetOutputAddress(output.Address),
+                    Address = address,
                     ValueToTransfer = output.Value,
                     Tag = Tag.Empty,
                     Timestamp = Timestamp.UnixSecondsTimestamp,
@@ -98,32 +98,58 @@ namespace Lykke.Service.Iota.Sign.Services
             }
         }
 
-        private void AddInputs(Bundle bundle, List<VirtualAddressInfo> inputs)
+        private async Task AddInputs(Bundle bundle, List<VirtualInput> virtualInputs)
         {
-            foreach (var input in inputs)
+            foreach (var virtualInput in virtualInputs)
             {
-                var inputsWithBalance = input.VirtualAddressInputs.Where(f => f.Balance > 0);
+                var inputsWithBalance = virtualInput.Inputs.Where(f => f.Balance > 0);
                 if (!inputsWithBalance.Any())
                 {
-                    throw new ArgumentException($"There are no inputs with positive balance for {input.Address} address");
+                    throw new ArgumentException($"There are no inputs with positive balance for {virtualInput.VirtualAddress} address");
                 }
 
                 foreach (var inputWithBalance in inputsWithBalance)
                 {
-                    var inputAddress = GetAddress(input.Seed, inputWithBalance.Index);
+                    var inputAddress = GetAddress(virtualInput.Seed, inputWithBalance.Index);
 
                     inputAddress.Balance = inputWithBalance.Balance;
 
                     bundle.AddInput(new Address[] { inputAddress });
-                }                
+                }
+
+                var inputsWithoutBalance = virtualInput.Inputs.Where(f => f.Balance == 0).OrderBy(f => f.Index);
+                if (!inputsWithoutBalance.Any())
+                {
+                    var addressNext = GetAddress(virtualInput.Seed, virtualInput.Inputs.Max(f => f.Index) + 1);
+
+                    virtualInput.NextAddress = addressNext;
+
+                    await SaveAddress(virtualInput.VirtualAddress, addressNext.ToAddressWithChecksum(), addressNext.KeyIndex);
+
+                    break;
+                }
+
+                foreach (var inputWithoutBalance in inputsWithoutBalance)
+                {
+                    var canRecieve = await GetAddressRecieveFunds(inputWithoutBalance.Address);
+                    if (canRecieve)
+                    {
+                        virtualInput.NextAddress = new Address(inputWithoutBalance.Address);
+
+                        break;
+                    }
+                }
+
+                throw new ArgumentException($"The {virtualInput.VirtualAddress} has inputs with 0 balance, " +
+                    $"but there in no any address that can recieve funds");
             }
         }
 
-        private async Task<Address> AddReminder(Bundle bundle, List<VirtualAddressInfo> inputs, TransactionType transactionType)
+        private void AddReminder(Bundle bundle, List<VirtualInput> virtualInputs, TransactionType transactionType)
         {
             if (bundle.Balance == 0)
             {
-                return null;
+                return;
             }
 
             if (bundle.Balance < 0)
@@ -134,33 +160,22 @@ namespace Lykke.Service.Iota.Sign.Services
             {
                 throw new ArgumentException($"Input amount must equal Output amount for cash-in operation");
             }
-            if (transactionType == TransactionType.Cashout && inputs.Count > 1)
+            if (transactionType == TransactionType.Cashout && virtualInputs.Count > 1)
             {
                 throw new ArgumentException($"Only one input is allowed with positive reminder amount {bundle.Balance}");
             }
 
-            var input = inputs[0];
-
-            var inputAddress = await GetFirstNotLockedInput(input.VirtualAddressInputs);
-            var reminder = inputAddress == null ?
-                GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1) :
-                new Address(inputAddress.Address);
-
-            reminder.Balance = bundle.Balance;
-
-            bundle.AddRemainder(reminder);
-
-            return reminder;
+            bundle.AddRemainder(virtualInputs.First().NextAddress);
         }
 
-        private async Task<List<VirtualAddressInfo>> GetTxInputs(string[] seeds, TransactionContext transactionContext)
+        private async Task<List<VirtualInput>> GetVirtualInputs(string[] seeds, TransactionInput[] txInputs)
         {
-            var inputs = new List<VirtualAddressInfo>();
+            var virtualInputs = new List<VirtualInput>();
             var seedDictionary = new Dictionary<string, string>(
                 seeds.Select(f => KeyValuePair.Create(GetVirtualAddress(f), f))
             );
 
-            foreach (var input in transactionContext.Inputs)
+            foreach (var input in txInputs)
             {
                 if (!seedDictionary.ContainsKey(input.VirtualAddress))
                 {
@@ -173,66 +188,25 @@ namespace Lykke.Service.Iota.Sign.Services
                     throw new ArgumentException($"There are no inputs for {input.VirtualAddress} address");
                 }
 
-                var inputInfo = new VirtualAddressInfo
+                virtualInputs.Add(new VirtualInput
                 {
                     Seed = seedDictionary[input.VirtualAddress],
-                    Address = input.VirtualAddress,
-                    VirtualAddressInputs = virtualAddressInputs.ToList()
-                };
-
-                inputs.Add(inputInfo);
+                    VirtualAddress = input.VirtualAddress,
+                    Inputs = virtualAddressInputs.ToList()
+                });
             }
 
-            return inputs;
+            return virtualInputs;
         }
 
-        private async Task CreateNewRealAddresses(List<VirtualAddressInfo> inputs,
-            TransactionContext transactionContext,
-            Address reminderAddress)
-        {
-            if (reminderAddress == null)
-            {
-                foreach (var input in inputs)
-                {
-                    var virtualAddressInput = await GetFirstNotLockedInput(input.VirtualAddressInputs);
-                    if (virtualAddressInput == null)
-                    {
-                        var inputAddress = GetAddress(input.Seed, input.VirtualAddressInputs.Max(f => f.Index) + 1);
-
-                        await SaveAddress(input.Address, inputAddress.ToAddressWithChecksum(), inputAddress.KeyIndex);
-                    }
-                }
-            }
-            else
-            {
-                await SaveAddress(inputs[0].Address, reminderAddress.ToAddressWithChecksum(), reminderAddress.KeyIndex);
-            }
-        }
-
-        public async Task SaveAddress(string virtualAddress, string realAddress, int index)
-        {
-            var data = new
-            {
-                realAddress,
-                index
-            };
-
-            await FlurlHelper.PostJsonAsync($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}", data);
-        }
-
-        private async Task<AddressInput[]> GetVirtualAddressInputs(string virtualAddress)
-        {
-            return await FlurlHelper.GetJsonAsync<AddressInput[]>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/inputs");
-        }
-
-        private Address GetOutputAddress(string address)
+        private async Task<Address> GetOutputAddress(string address)
         {
             if (address.StartsWith(Consts.VirtualAddressPrefix))
             {
-                address = FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real").Result;
+                address = await FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real");
             }
 
-            var canRecieve = FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-recieve").Result;
+            var canRecieve = await GetAddressRecieveFunds(address);
             if (!canRecieve)
             {
                 throw new ArgumentException($"The output {address} address can not recieve iota. Private key reuse detected.");
@@ -276,13 +250,36 @@ namespace Lykke.Service.Iota.Sign.Services
             return string.Concat(bytes.Select(f => f.ToString("X2")));
         }
 
-        private class VirtualAddressInfo
+        public async Task SaveAddress(string virtualAddress, string realAddress, int index)
+        {
+            var data = new
+            {
+                realAddress,
+                index
+            };
+
+            await FlurlHelper.PostJsonAsync($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}", data);
+        }
+
+        private async Task<AddressInput[]> GetVirtualAddressInputs(string virtualAddress)
+        {
+            return await FlurlHelper.GetJsonAsync<AddressInput[]>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/inputs");
+        }
+
+        private async Task<bool> GetAddressRecieveFunds(string address)
+        {
+            return await FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-recieve");
+        }
+
+        private class VirtualInput
         {
             public string Seed { get; set; }
 
-            public string Address { get; set; }
+            public string VirtualAddress { get; set; }
 
-            public List<AddressInput> VirtualAddressInputs { get; set; }            
+            public Address NextAddress { get; set; }
+
+            public List<AddressInput> Inputs { get; set; }
         }
     }
 }
