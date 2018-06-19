@@ -140,8 +140,11 @@ namespace Lykke.Service.Iota.Sign.Services
                     }
                 }
 
-                throw new ArgumentException($"The {virtualInput.VirtualAddress} has inputs with 0 balance, " +
-                    $"but there in no any address that can recieve funds");
+                if (virtualInput.NextAddress == null)
+                {
+                    throw new ArgumentException($"The {virtualInput.VirtualAddress} has inputs with 0 balance, " +
+                        $"but there in no any address that can recieve funds");
+                }
             }
         }
 
