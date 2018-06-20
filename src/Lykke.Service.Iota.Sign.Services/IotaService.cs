@@ -155,11 +155,11 @@ namespace Lykke.Service.Iota.Sign.Services
                 return;
             }
 
-            if (bundle.Balance < 0)
+            if (bundle.Balance > 0)
             {
-                throw new ArgumentException($"Input amount is less than Output amount on {bundle.Balance}");
+                throw new ArgumentException($"Input amount is less than Output amount on {-bundle.Balance}");
             }
-            if (transactionType == TransactionType.Cashin && bundle.Balance > 0)
+            if (transactionType == TransactionType.Cashin && bundle.Balance != 0)
             {
                 throw new ArgumentException($"Input amount must equal Output amount for cash-in operation");
             }
