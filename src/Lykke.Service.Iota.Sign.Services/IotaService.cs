@@ -150,25 +150,15 @@ namespace Lykke.Service.Iota.Sign.Services
 
         private void AddReminder(Bundle bundle, List<VirtualInput> virtualInputs, TransactionType transactionType)
         {
-            if (bundle.Balance == 0)
-            {
-                return;
-            }
-
             if (bundle.Balance > 0)
             {
                 throw new ArgumentException($"Input amount is less than Output amount on {-bundle.Balance}");
             }
-            if (transactionType == TransactionType.Cashin && bundle.Balance != 0)
-            {
-                throw new ArgumentException($"Input amount must equal Output amount for cash-in operation");
-            }
-            if (transactionType == TransactionType.Cashout && virtualInputs.Count > 1)
-            {
-                throw new ArgumentException($"Only one input is allowed with positive reminder amount {bundle.Balance}");
-            }
 
-            bundle.AddRemainder(virtualInputs.First().NextAddress);
+            if (bundle.Balance < 0)
+            {
+                bundle.AddRemainder(virtualInputs.First().NextAddress);
+            }            
         }
 
         private async Task<List<VirtualInput>> GetVirtualInputs(string[] seeds, TransactionInput[] txInputs)
