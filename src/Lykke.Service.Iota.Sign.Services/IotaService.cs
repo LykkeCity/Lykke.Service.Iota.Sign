@@ -131,7 +131,7 @@ namespace Lykke.Service.Iota.Sign.Services
 
                 foreach (var inputWithoutBalance in inputsWithoutBalance)
                 {
-                    var canRecieve = await GetAddressRecieveFunds(inputWithoutBalance.Address);
+                    var canRecieve = await CanAddressRecieveFunds(inputWithoutBalance.Address);
                     if (canRecieve)
                     {
                         virtualInput.NextAddress = new Address(inputWithoutBalance.Address);
@@ -199,12 +199,6 @@ namespace Lykke.Service.Iota.Sign.Services
                 address = await FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real");
             }
 
-            var canRecieve = await GetAddressRecieveFunds(address);
-            if (!canRecieve)
-            {
-                throw new ArgumentException($"The output {address} address can not recieve iota. Private key reuse detected.");
-            }
-
             return new Address(address);
         }
 
@@ -214,25 +208,6 @@ namespace Lykke.Service.Iota.Sign.Services
             var seedObj = new Seed(seed);
 
             return addressGenerator.GetAddress(seedObj, SecurityLevel.Medium, index);
-        }
-
-        private async Task<AddressInput> GetFirstNotLockedInput(List<AddressInput> inputs)
-        {
-            foreach (var input in inputs)
-            {
-                if (input.Balance == 0)
-                {
-                    var canRecieve = await FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{input.Address}/can-recieve");
-                    if (!canRecieve)
-                    {
-                        throw new ArgumentException($"The input {input.Address} address can not recieve iota. Private key reuse detected.");
-                    }
-
-                    return input;
-                }
-            }
-
-            return null;
         }
 
         private string CalculateHash(string input)
@@ -259,7 +234,7 @@ namespace Lykke.Service.Iota.Sign.Services
             return await FlurlHelper.GetJsonAsync<AddressInput[]>($"{_apiUrl}/api/internal/virtual-address/{virtualAddress}/inputs");
         }
 
-        private async Task<bool> GetAddressRecieveFunds(string address)
+        private async Task<bool> CanAddressRecieveFunds(string address)
         {
             return await FlurlHelper.GetJsonAsync<bool>($"{_apiUrl}/api/internal/address/{address}/can-recieve");
         }
