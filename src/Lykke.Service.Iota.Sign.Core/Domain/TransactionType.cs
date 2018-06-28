@@ -1,8 +1,8 @@
-﻿namespace Lykke.Service.Iota.Sign.Core.Domain
-{
-    public enum TransactionType
-    {
-        Cashin,
-        Cashout
-    }
-}
+﻿//namespace Lykke.Service.Iota.Sign.Core.Domain
+//{
+//    public enum TransactionType
+//    {
+//        Cashin,
+//        Cashout
+//    }
+//}

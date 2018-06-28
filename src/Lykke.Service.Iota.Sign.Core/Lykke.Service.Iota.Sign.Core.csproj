@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Lykke.Common" Version="6.8.1" />
+    <PackageReference Include="Lykke.Service.Iota.Api.Shared" Version="1.0.2" />
   </ItemGroup>
 
 </Project>

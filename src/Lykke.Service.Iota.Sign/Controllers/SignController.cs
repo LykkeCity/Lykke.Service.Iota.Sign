@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Lykke.Service.Iota.Sign.Core.Domain;
 using Lykke.Common.Api.Contract.Responses;
+using Lykke.Service.Iota.Api.Shared;
 
 namespace Lykke.Service.Iota.Sign.Controllers
 {

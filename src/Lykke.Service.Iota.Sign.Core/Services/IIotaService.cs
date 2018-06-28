@@ -1,4 +1,4 @@
-﻿using Lykke.Service.Iota.Sign.Core.Domain;
+﻿using Lykke.Service.Iota.Api.Shared;
 using System.Threading.Tasks;
 
 namespace Lykke.Service.Iota.Sign.Core.Services

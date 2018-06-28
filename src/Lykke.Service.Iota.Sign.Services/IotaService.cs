@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Tangle.Net.Cryptography;
 using Tangle.Net.Entity;
 using Tangle.Net.Utils;
+using Lykke.Service.Iota.Api.Shared;
 
 namespace Lykke.Service.Iota.Sign.Services
 {
