@@ -196,7 +196,9 @@ namespace Lykke.Service.Iota.Sign.Services
         {
             if (address.StartsWith(Consts.VirtualAddressPrefix))
             {
-                address = await FlurlHelper.GetStringAsync($"{_apiUrl}/api/internal/virtual-address/{address}/real");
+                var response = await FlurlHelper.GetJsonAsync<UnderlyingAddressResponse>($"{_apiUrl}/api/addresses/{address}/underlying");
+
+                address = response.UnderlyingAddress;
             }
 
             return new Address(address);
@@ -248,6 +250,11 @@ namespace Lykke.Service.Iota.Sign.Services
             public Address NextAddress { get; set; }
 
             public List<AddressInput> Inputs { get; set; }
+        }
+
+        private class UnderlyingAddressResponse
+        {
+            public string UnderlyingAddress { get; set; }
         }
     }
 }
