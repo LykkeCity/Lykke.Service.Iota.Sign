@@ -7,17 +7,17 @@ namespace Lykke.Service.Iota.Sign.Services.Helpers
 {
     public class FlurlHelper
     {
-        public static async Task<T> GetJsonAsync<T>(string url, int tryCount = 3, int tryDelayMs = 100)
+        public static async Task<T> GetJsonAsync<T>(string url, int tryCount = 5, int tryDelayMs = 100)
         {
             return await Retry.Try(() => url.GetJsonAsync<T>(), NeedToRetryException, tryCount, tryDelayMs);
         }
 
-        public static async Task<string> GetStringAsync(string url, int tryCount = 3, int tryDelayMs = 100)
+        public static async Task<string> GetStringAsync(string url, int tryCount = 5, int tryDelayMs = 100)
         {
             return await Retry.Try(() => url.GetStringAsync(), NeedToRetryException, tryCount, tryDelayMs);
         }
 
-        public static async Task PostJsonAsync(string url, object data, int tryCount = 3, int tryDelayMs = 100)
+        public static async Task PostJsonAsync(string url, object data, int tryCount = 5, int tryDelayMs = 100)
         {
             await Retry.Try(() => url.PostJsonAsync(data), NeedToRetryException, tryCount, tryDelayMs);
         }
