@@ -56,6 +56,7 @@ namespace Lykke.Service.Iota.Sign.Models
 
     public class SignResponse
     {
+        [JsonProperty("signedTransaction")]
         public string SignedTransaction { get; set; }
     }
 }
