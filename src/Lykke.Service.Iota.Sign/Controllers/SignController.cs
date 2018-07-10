@@ -1,13 +1,12 @@
-﻿using Lykke.Service.Iota.Sign.Core.Services;
-using Lykke.Service.Iota.Sign.Models;
-using Lykke.Service.Iota.Sign.Utils;
+﻿using Lykke.Service.Iota.Sign.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Lykke.Service.Iota.Sign.Core.Domain;
 using Lykke.Common.Api.Contract.Responses;
 using Lykke.Service.Iota.Api.Shared;
+using Lykke.Service.Iota.Sign.Helpers;
+using Lykke.Service.Iota.Sign.Services;
 
 namespace Lykke.Service.Iota.Sign.Controllers
 {

@@ -1,11 +1,17 @@
 ﻿using Lykke.Common.Api.Contract.Responses;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.Linq;
+using Tangle.Net.Entity;
 
-namespace Lykke.Service.Iota.Sign.Utils
+namespace Lykke.Service.Iota.Sign.Helpers
 {
     public static class Extensions
     {
+        public static string ValueWithChecksum(this Address self)
+        {
+            return $"{self.Value}{Checksum.FromAddress(self).Value}";
+        }
+
         public static ErrorResponse ToErrorResponse(this ModelStateDictionary modelState)
         {
             var response = new ErrorResponse();

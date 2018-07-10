@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
-using Lykke.Service.Iota.Sign.Core.Services;
+using Lykke.Service.Iota.Sign.Services;
 
 namespace Lykke.Service.Iota.Sign.Models
 {

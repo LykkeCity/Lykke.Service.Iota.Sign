@@ -27,27 +27,28 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lykke.Common.ApiLibrary" Version="1.7.1" />
-    <PackageReference Include="Lykke.Logs" Version="4.3.3" />
+    <PackageReference Include="Flurl" Version="2.7.1" />
+    <PackageReference Include="Flurl.Http" Version="2.3.2" />
+    <PackageReference Include="Lykke.Common.ApiLibrary" Version="1.10.1" />
+    <PackageReference Include="Lykke.Logs" Version="5.1.1" />
+    <PackageReference Include="Lykke.Sdk" Version="3.1.1" />
+    <PackageReference Include="Lykke.Service.Iota.Api.Shared" Version="1.0.2" />
     <PackageReference Include="Lykke.Service.Session" Version="1.0.33" />
-    <PackageReference Include="Lykke.SettingsReader" Version="2.4.0" />
-    <PackageReference Include="Lykke.SlackNotification.AzureQueue" Version="2.0.4" />
-    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.2.1" />
-    <PackageReference Include="Microsoft.AspNetCore" Version="2.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.0.4" />
-    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="2.0.2" />
+    <PackageReference Include="Lykke.SettingsReader" Version="2.4.1" />
+    <PackageReference Include="Lykke.SlackNotification.AzureQueue" Version="2.0.5" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.3.0" />
+    <PackageReference Include="Microsoft.AspNetCore" Version="2.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="2.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="2.1.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="1.1.0" />
     <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="4.2.2" />
+    <PackageReference Include="Tangle.Net.Standard" Version="1.0.7.4" />
   </ItemGroup>
   
   <ItemGroup>
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="1.0.1" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <ProjectReference Include="..\Lykke.Service.Iota.Sign.Core\Lykke.Service.Iota.Sign.Core.csproj" />
-    <ProjectReference Include="..\Lykke.Service.Iota.Sign.Services\Lykke.Service.Iota.Sign.Services.csproj" />
   </ItemGroup>
 
   <Target Name="PrepublishScript" BeforeTargets="PrepareForPublish">

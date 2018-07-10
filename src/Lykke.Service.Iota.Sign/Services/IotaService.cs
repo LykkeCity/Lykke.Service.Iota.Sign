@@ -1,6 +1,4 @@
 ﻿using Common;
-using Common.Log;
-using Lykke.Service.Iota.Sign.Services.Helpers;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using System;
 using System.Collections.Generic;
@@ -10,17 +8,16 @@ using Tangle.Net.Cryptography;
 using Tangle.Net.Entity;
 using Tangle.Net.Utils;
 using Lykke.Service.Iota.Api.Shared;
+using Lykke.Service.Iota.Sign.Helpers;
 
 namespace Lykke.Service.Iota.Sign.Services
 {
     public class IotaService : IIotaService
     {
-        private readonly ILog _log;
         private readonly string _apiUrl;
 
-        public IotaService(ILog log, string apiUrl)
+        public IotaService(string apiUrl)
         {
-            _log = log;
             _apiUrl = apiUrl;
         }
 
@@ -56,7 +53,7 @@ namespace Lykke.Service.Iota.Sign.Services
         {
             var address = GetAddress(seed, index);
 
-            return address.ToAddressWithChecksum();
+            return address.ValueWithChecksum();
         }
 
         public async Task<string> SignTransaction(string[] seeds, TransactionContext transactionContext)
@@ -123,7 +120,7 @@ namespace Lykke.Service.Iota.Sign.Services
 
                     virtualInput.NextAddress = addressNext;
 
-                    await SaveAddress(virtualInput.VirtualAddress, addressNext.ToAddressWithChecksum(), addressNext.KeyIndex);
+                    await SaveAddress(virtualInput.VirtualAddress, addressNext.ValueWithChecksum(), addressNext.KeyIndex);
 
                     break;
                 }

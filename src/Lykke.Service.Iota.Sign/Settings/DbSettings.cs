@@ -1,4 +1,4 @@
-﻿namespace Lykke.Service.Iota.Sign.Core.Settings.ServiceSettings
+﻿namespace Lykke.Service.Iota.Sign.Settings
 {
     public class DbSettings
     {

@@ -1,5 +1,5 @@
-﻿using Lykke.Service.Iota.Sign.Core.Services;
-using Lykke.Service.Iota.Sign.Models;
+﻿using Lykke.Service.Iota.Sign.Models;
+using Lykke.Service.Iota.Sign.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
