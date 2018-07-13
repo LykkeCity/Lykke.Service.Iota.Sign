@@ -4,8 +4,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Lykke.Sdk;
 using Lykke.Service.Iota.Sign.Settings;
 using Lykke.Logs.Loggers.LykkeSlack;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
 
 namespace Lykke.Service.Iota.Sign
 {
@@ -15,7 +13,6 @@ namespace Lykke.Service.Iota.Sign
         {
             var service = services.BuildServiceProvider<AppSettings>(options =>
             {
-                options.ApiTitle = "Iota.Sign.Api";
                 options.Logs = logs =>
                 {
                     logs.AzureTableName = "IotaSignLog";
@@ -38,6 +35,11 @@ namespace Lykke.Service.Iota.Sign
                 {
                     swagger.DescribeAllEnumsAsStrings();
                     swagger.DescribeStringEnumsInCamelCase();
+                };
+
+                options.SwaggerOptions = new LykkeSwaggerOptions
+                {
+                    ApiTitle = "Iota.Sign.Api"
                 };
             });
 
