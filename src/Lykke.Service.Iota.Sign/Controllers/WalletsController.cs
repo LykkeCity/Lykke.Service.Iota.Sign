@@ -31,14 +31,5 @@ namespace Lykke.Service.Iota.Sign.Controllers
                 PublicAddress = virtualAddress
             };
         }
-
-        [HttpPost("test")]
-        public IActionResult Test(int index, string seed)
-        {
-            var virtualAddress = _iotaService.GetVirtualAddress(seed);
-            var realAddress = _iotaService.GetRealAddress(seed, index);
-
-            return Ok(new { seed, virtualAddress, realAddress });
-        }
     }
 }

@@ -114,21 +114,9 @@ namespace Lykke.Service.Iota.Sign.Services
                 }
 
                 var inputsWithoutBalance = virtualInput.Inputs.Where(f => f.Balance == 0).OrderBy(f => f.Index);
-                if (!inputsWithoutBalance.Any())
-                {
-                    var addressNext = GetAddress(virtualInput.Seed, virtualInput.Inputs.Max(f => f.Index) + 1);
-
-                    virtualInput.NextAddress = addressNext;
-
-                    await SaveAddress(virtualInput.VirtualAddress, addressNext.ValueWithChecksum(), addressNext.KeyIndex);
-
-                    break;
-                }
-
                 foreach (var inputWithoutBalance in inputsWithoutBalance)
                 {
-                    var canRecieve = await CanAddressRecieveFunds(inputWithoutBalance.Address);
-                    if (canRecieve)
+                    if (await CanAddressRecieveFunds(inputWithoutBalance.Address))
                     {
                         virtualInput.NextAddress = new Address(inputWithoutBalance.Address);
 
@@ -138,8 +126,11 @@ namespace Lykke.Service.Iota.Sign.Services
 
                 if (virtualInput.NextAddress == null)
                 {
-                    throw new ArgumentException($"The {virtualInput.VirtualAddress} has inputs with 0 balance, " +
-                        $"but there in no any address that can recieve funds");
+                    var addressNext = GetAddress(virtualInput.Seed, virtualInput.Inputs.Max(f => f.Index) + 1);
+
+                    virtualInput.NextAddress = addressNext;
+
+                    await SaveAddress(virtualInput.VirtualAddress, addressNext.ValueWithChecksum(), addressNext.KeyIndex);
                 }
             }
         }
