@@ -7,6 +7,7 @@ using Lykke.Common.Api.Contract.Responses;
 using Lykke.Service.Iota.Api.Shared;
 using Lykke.Service.Iota.Sign.Helpers;
 using Lykke.Service.Iota.Sign.Services;
+using Common;
 
 namespace Lykke.Service.Iota.Sign.Controllers
 {
@@ -43,12 +44,22 @@ namespace Lykke.Service.Iota.Sign.Controllers
                 return BadRequest(ErrorResponse.Create($"{nameof(transactionContext)}{nameof(transactionContext.Outputs)} must have at least one record"));
             }
 
-            var hex = await _iotaService.SignTransaction(request.PrivateKeys, transactionContext);
-
-            return Ok(new SignResponse()
+            try
             {
-                SignedTransaction = hex
-            });
+                var hex = await _iotaService.SignTransaction(request.PrivateKeys, transactionContext);
+
+                return Ok(new SignResponse()
+                {
+                    SignedTransaction = hex
+                });
+            }
+            catch (SignContextException ex)
+            {
+                return Ok(new SignResponse()
+                {
+                    SignedTransaction = new SignedTransactionContext { Error = ex.Message }.ToJson()
+                });
+            }            
         }        
     }
 }

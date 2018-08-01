@@ -1,6 +1,5 @@
 ﻿using Common;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -101,7 +100,7 @@ namespace Lykke.Service.Iota.Sign.Services
                 var inputsWithBalance = virtualInput.Inputs.Where(f => f.Balance > 0);
                 if (!inputsWithBalance.Any())
                 {
-                    throw new ArgumentException($"There are no inputs with positive balance for {virtualInput.VirtualAddress} address");
+                    throw new SignContextException($"There are no inputs with positive balance for {virtualInput.VirtualAddress} address");
                 }
 
                 foreach (var inputWithBalance in inputsWithBalance)
@@ -139,7 +138,7 @@ namespace Lykke.Service.Iota.Sign.Services
         {
             if (bundle.Balance > 0)
             {
-                throw new ArgumentException($"Input amount is less than Output amount on {-bundle.Balance}");
+                throw new SignContextException($"Input amount is less than Output amount on {-bundle.Balance}");
             }
 
             if (bundle.Balance < 0)
@@ -159,13 +158,13 @@ namespace Lykke.Service.Iota.Sign.Services
             {
                 if (!seedDictionary.ContainsKey(input.VirtualAddress))
                 {
-                    throw new ArgumentException($"The private key for {input.VirtualAddress} address was not provided");
+                    throw new SignContextException($"The private key for {input.VirtualAddress} address was not provided");
                 }
 
                 var virtualAddressInputs = await GetVirtualAddressInputs(input.VirtualAddress);
                 if (virtualAddressInputs == null || !virtualAddressInputs.Any())
                 {
-                    throw new ArgumentException($"There are no inputs for {input.VirtualAddress} address");
+                    throw new SignContextException($"There are no inputs for {input.VirtualAddress} address");
                 }
 
                 virtualInputs.Add(new VirtualInput
