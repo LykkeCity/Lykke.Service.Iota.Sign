@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Lykke.Sdk;
 using Lykke.Service.Iota.Sign.Settings;
-using Lykke.Logs.Loggers.LykkeSlack;
 
 namespace Lykke.Service.Iota.Sign
 {
@@ -13,23 +12,7 @@ namespace Lykke.Service.Iota.Sign
         {
             var service = services.BuildServiceProvider<AppSettings>(options =>
             {
-                options.Logs = logs =>
-                {
-                    logs.AzureTableName = "IotaSignLog";
-                    logs.AzureTableConnectionStringResolver = settings => settings.IotaSign.Db.LogsConnString;
-
-                    logs.Extended = extendedLogs =>
-                    {
-                        extendedLogs.AddAdditionalSlackChannel("BlockChainIntegration", channelOptions =>
-                        {
-                            channelOptions.MinLogLevel = Microsoft.Extensions.Logging.LogLevel.Information;
-                        });
-                        extendedLogs.AddAdditionalSlackChannel("BlockChainIntegrationImportantMessages", channelOptions =>
-                        {
-                            channelOptions.MinLogLevel = Microsoft.Extensions.Logging.LogLevel.Warning;
-                        });
-                    };
-                };
+                options.Logs = logs => logs.UseEmptyLogging();
 
                 options.Swagger = swagger =>
                 {
